@@ -38,7 +38,8 @@ HEADERS += \
     pdu.h \
     datastream.h \
     entitystatepdu.h \
-    entityid.h
+    entityid.h \
+    entitytype.h
 
 unix {
     target.path = /usr/lib

@@ -8,4 +8,9 @@ EntityStatePdu::EntityStatePdu()
 
 }
 
+EntityStatePdu::~EntityStatePdu()
+{
+
+}
+
 }
