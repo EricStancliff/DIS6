@@ -89,7 +89,7 @@ private:
         if(sizeof(T) < 2)
             return;
 
-        //access data in same memory address in two different ways.
+        //access data in same memory in two different ways.
         union {
             T data;
             unsigned char bytes[sizeof(T)];
@@ -107,7 +107,7 @@ private:
     template <typename T>
     void writeData(const T& data)
     {
-        //access data in same memory address in two different ways.
+        //access data in same memory in two different ways.
         union {
             T data;
             unsigned char bytes[sizeof(T)];
@@ -120,10 +120,24 @@ private:
         }
     }
 
+    //Some people don't like "type punning" with unions
+    //This is a possible implementation using raw pointers instead.
+//    template <typename T>
+//    void writeData(const T& data)
+//    {
+//        //access data in same memory address in two different ways.
+//        auto dataAddress = reinterpret_cast<unsigned char*>(data);
+//        for(size_t i = 0; i < sizeof(T); ++i)
+//        {
+//            m_data.push_back((*dataAddress));
+//            ++dataAddress;
+//        }
+//    }
+
     template <typename T>
     void readData(T& data)
     {
-        //access data in same memory address in two different ways.
+        //access data in same memory in two different ways.
         union {
             T data;
             unsigned char bytes[sizeof(T)];
@@ -145,6 +159,29 @@ private:
         }
         data = dataUnion.data;
     }
+
+    //Some people don't like "type punning" with unions
+    //This is a possible implementation using raw pointers instead.
+//    template <typename T>
+//    void readData(T& data)
+//    {
+//        auto dataAddress = reinterpret_cast<unsigned char*>(data);
+
+//        auto itr = m_data.begin();
+//        for(size_t i = 0; i < sizeof(T); ++i)
+//        {
+//            assert(itr != m_data.end());
+//            if(itr == m_data.end())
+//            {
+//                //ERROR Overrun
+//                m_error = "DataStream buffer overrun.";
+//                m_errorState = true;
+//            }
+//           (*dataAddress) = (*itr);
+//            ++dataAddress;
+//            itr = m_data.erase(itr);
+//        }
+//    }
 
     std::vector<unsigned char> m_data;
     Endian m_endian;  //Default BigEndian
