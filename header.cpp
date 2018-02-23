@@ -16,7 +16,7 @@ Header::Header() : m_version(0),
     m_length(0),
     m_padding(0)
 {
-    m_version = DIS6_1998_VERSION;
+    //m_version = DIS6_1998_VERSION;
 }
 
 Header::~Header()

@@ -4,30 +4,53 @@
 #include <climits>
 #include <vector>
 #include <assert.h>
+#include <type_traits>
+
+#ifdef __GNUC__
+#include <byteswap.h>
+#endif
+
+#ifdef MSVC
+#include <stdlib.h>
+#endif
 
 namespace DIS6
 {
 
-enum Endian {
+enum ByteOrder {
     BigEndian,
-    LitleEndian
+    LittleEndian
 };
+
+constexpr ByteOrder systemByteOrder()
+{
+    //todo
+    return LittleEndian;
+}
 
 //makes a copy of the data you give it and stores it in a string buffer
 class DataStream
 {
 public:
     DataStream();
+    DataStream(const std::vector<unsigned char>& data);
+    DataStream(unsigned char* data, size_t size);
     ~DataStream();
+
+    void resetPosition();
+    bool setPosition(size_t pos);
+    size_t position() const;
 
     size_t size() const;
     std::vector<unsigned char> data() const;
+    void setData(const std::vector<unsigned char>& data);
+    void setData(unsigned char* data, size_t size);
 
     template <typename T>
     void append(const T& data)
     {
         auto copyData = data;
-        swapEndian(copyData);
+        swapByteOrder(copyData);
         writeData(copyData);
     }
 
@@ -35,7 +58,7 @@ public:
     void read(T& data)
     {
         readData(data);
-        swapEndian(data);
+        swapByteOrder(data);
     }
 
     template <typename T>
@@ -43,7 +66,7 @@ public:
     {
         T data;
         readData(data);
-        swapEndian(data);
+        swapByteOrder(data);
         return data;
     }
 
@@ -51,7 +74,7 @@ public:
     void operator<<(const T& data)
     {
         auto copyData = data;
-        swapEndian(copyData);
+        swapByteOrder(copyData);
         writeData(copyData);
     }
 
@@ -59,12 +82,12 @@ public:
     void operator>>(T& data)
     {
         readData(data);
-        swapEndian(data);
+        swapByteOrder(data);
     }
 
 
-    Endian endian() const;
-    void setEndian(const Endian &endian);
+    ByteOrder byteOrder() const;
+    void setByteOrder(const ByteOrder &byteOrder);
 
 
     bool errorState() const;
@@ -75,116 +98,106 @@ private:
     //private for now - this might be stupid
     DataStream(const DataStream& copy);
 
-    template <typename T>
-    void swapEndian(T& data) const
+    template <typename T, std::enable_if_t<std::is_same<int16_t, T>::value || std::is_same<uint16_t, T>::value>* = nullptr>
+    void swapByteOrder(T& data) const
     {
-        //right now just for signed/unsigned char/short/int/long types.  I think this will work as is for doubles/floats as well.
-        //it would be faster to call the system calls based on my compiler, but that gets less generic.
-        static_assert(sizeof(T) == 1 || sizeof(T) == 2|| sizeof(T) == 4 || sizeof(T) == 8, "This method is intended for primitives");
-
-        //Assume that if we're working in LittleEndian, data is already in correct byte order.  This could be wrong.
-        if(m_endian == LitleEndian)
+        if(systemByteOrder() == m_byteOrder)
             return;
-
-        if(sizeof(T) < 2)
-            return;
-
-        //access data in same memory in two different ways.
-        union {
-            T data;
-            unsigned char bytes[sizeof(T)];
-        } inData, outData;
-
-        inData.data = data;
-
-        for(size_t i = 0; i < sizeof(T); ++i)
-        {
-            outData.bytes[i] = inData.bytes[(sizeof(T) - 1) - i];
-        }
-        data = outData.data;
+#ifdef __GNUC__
+        data = bswap_16(data);
+#elif MSVC
+        data = _byteswap_ushort(data);
+#endif
     }
+
+    template <typename T, std::enable_if_t<std::is_same<int32_t, T>::value || std::is_same<uint32_t, T>::value || std::is_same<float, T>::value>* = nullptr>
+    void swapByteOrder(T& data) const
+    {
+        if(systemByteOrder() == m_byteOrder)
+            return;
+#ifdef __GNUC__
+        data = bswap_32(data);
+#elif MSVC
+        data = _byteswap_ulong(data);
+#endif
+    }
+
+    template <typename T, std::enable_if_t<std::is_same<int64_t, T>::value || std::is_same<uint64_t, T>::value || std::is_same<double, T>::value>* = nullptr>
+    void swapByteOrder(T& data) const
+    {
+        if(systemByteOrder() == m_byteOrder)
+            return;
+#ifdef __GNUC__
+        data = bswap_64(data);
+#elif MSVC
+        data = _byteswap_uint64(data);
+#endif
+    }
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
+    template <typename T, std::enable_if_t<std::is_same<int8_t, T>::value || std::is_same<uint8_t, T>::value || std::is_same<bool, T>::value>* = nullptr>
+    void swapByteOrder(T& data) const
+    {
+        //do nothing
+    }
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
+    //default for other classes
+    template <typename T, std::enable_if_t<!std::is_arithmetic<T>::value>* = nullptr>
+    void swapByteOrder(T& data) const
+    {
+        //for now
+        static_assert(!std::is_arithmetic<T>::value, "DataStream doesn't handle that type yet!  Try a primative type.");
+    }
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
     template <typename T>
     void writeData(const T& data)
     {
-        //access data in same memory in two different ways.
-        union {
-            T data;
-            unsigned char bytes[sizeof(T)];
-        } dataUnion;
-        dataUnion.data = data;
-
-        for(auto oneByte : dataUnion.bytes)
+        //access data in same memory address in two different ways.
+        auto dataAddress = reinterpret_cast<const unsigned char*>( (&data) );
+        for(size_t i = 0; i < sizeof(T); ++i)
         {
-            m_data.push_back(oneByte);
+            m_pos = m_data.insert(m_pos, (*dataAddress));
+            ++dataAddress;
+            ++m_pos;
         }
     }
-
-    //Some people don't like "type punning" with unions
-    //This is a possible implementation using raw pointers instead.
-//    template <typename T>
-//    void writeData(const T& data)
-//    {
-//        //access data in same memory address in two different ways.
-//        auto dataAddress = reinterpret_cast<unsigned char*>(data);
-//        for(size_t i = 0; i < sizeof(T); ++i)
-//        {
-//            m_data.push_back((*dataAddress));
-//            ++dataAddress;
-//        }
-//    }
 
     template <typename T>
     void readData(T& data)
     {
-        //access data in same memory in two different ways.
-        union {
-            T data;
-            unsigned char bytes[sizeof(T)];
-        } dataUnion;
-        dataUnion.data = data;
-
-        auto itr = m_data.begin();
+        auto dataAddress = reinterpret_cast<unsigned char*>( (&data) );
         for(size_t i = 0; i < sizeof(T); ++i)
         {
-            assert(itr != m_data.end());
-            if(itr == m_data.end())
+            assert(m_pos != m_data.end());
+            if(m_pos == m_data.end())
             {
                 //ERROR Overrun
                 m_error = "DataStream buffer overrun.";
                 m_errorState = true;
             }
-            dataUnion.bytes[i] = (*itr);
-            itr = m_data.erase(itr);
+           (*dataAddress) = (*m_pos);
+            ++dataAddress;
+            ++m_pos;
         }
-        data = dataUnion.data;
     }
 
-    //Some people don't like "type punning" with unions
-    //This is a possible implementation using raw pointers instead.
-//    template <typename T>
-//    void readData(T& data)
-//    {
-//        auto dataAddress = reinterpret_cast<unsigned char*>(data);
-
-//        auto itr = m_data.begin();
-//        for(size_t i = 0; i < sizeof(T); ++i)
-//        {
-//            assert(itr != m_data.end());
-//            if(itr == m_data.end())
-//            {
-//                //ERROR Overrun
-//                m_error = "DataStream buffer overrun.";
-//                m_errorState = true;
-//            }
-//           (*dataAddress) = (*itr);
-//            ++dataAddress;
-//            itr = m_data.erase(itr);
-//        }
-//    }
-
     std::vector<unsigned char> m_data;
-    Endian m_endian;  //Default BigEndian
+    std::vector<unsigned char>::iterator m_pos;
+    ByteOrder m_byteOrder;  //Default BigEndian
+    bool m_doSwap;
     bool m_errorState;
     std::string m_error;
 };

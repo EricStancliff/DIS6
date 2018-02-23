@@ -30,7 +30,8 @@ SOURCES += \
     pdu.cpp \
     datastream.cpp \
     entitystatepdu.cpp \
-    entityid.cpp
+    entityid.cpp \
+    utils.cpp
 
 HEADERS += \
         dis6.h \
@@ -39,7 +40,8 @@ HEADERS += \
     datastream.h \
     entitystatepdu.h \
     entityid.h \
-    entitytype.h
+    entitytype.h \
+    utils.h
 
 unix {
     target.path = /usr/lib
