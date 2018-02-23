@@ -34,7 +34,6 @@ constexpr ByteOrder systemByteOrder()
     return num.byteData ? LittleEndian : BigEndian;
 }
 
-//makes a copy of the data you give it and stores it in a string buffer
 class DIS6_EXPORT DataStream
 {
 public:
@@ -170,17 +169,10 @@ private:
 #endif
     }
 
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
     void swapByteOrder(...) const
     {
         //do nothing
     }
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
 
     template <typename T>
     void writeData(const T& data)
