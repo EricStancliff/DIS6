@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dis6_global.h"
+
 //This Object represents a DIS v6 header
 
 #include <cstdint>
@@ -9,7 +11,7 @@ namespace DIS6
 
 class DataStream;
 
-class Header
+class DIS6_EXPORT Header
 {
 public:
     Header();

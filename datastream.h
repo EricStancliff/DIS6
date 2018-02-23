@@ -5,6 +5,7 @@
 #include <vector>
 #include <assert.h>
 #include <type_traits>
+#include <cstdarg>
 
 #ifdef __GNUC__
 #include <byteswap.h>
@@ -13,6 +14,8 @@
 #ifdef MSVC
 #include <stdlib.h>
 #endif
+
+#include "dis6_global.h"
 
 namespace DIS6
 {
@@ -24,12 +27,15 @@ enum ByteOrder {
 
 constexpr ByteOrder systemByteOrder()
 {
-    //todo
-    return LittleEndian;
+    union {
+        uint16_t shortData;
+        uint8_t byteData;
+    } num {1};
+    return num.byteData ? LittleEndian : BigEndian;
 }
 
 //makes a copy of the data you give it and stores it in a string buffer
-class DataStream
+class DIS6_EXPORT DataStream
 {
 public:
     DataStream();
@@ -46,45 +52,75 @@ public:
     void setData(const std::vector<unsigned char>& data);
     void setData(unsigned char* data, size_t size);
 
-    template <typename T>
-    void append(const T& data)
+    template <typename T, std::enable_if_t<std::is_arithmetic<T>::value>* = nullptr>
+    bool append(const T& data)
     {
         auto copyData = data;
         swapByteOrder(copyData);
         writeData(copyData);
+        return m_errorState;
     }
 
-    template <typename T>
-    void read(T& data)
+    template <typename T, std::enable_if_t<std::is_arithmetic<T>::value>* = nullptr>
+    bool read(T& data)
     {
         readData(data);
         swapByteOrder(data);
+        return m_errorState;
     }
 
-    template <typename T>
-    T read()
-    {
-        T data;
-        readData(data);
-        swapByteOrder(data);
-        return data;
-    }
-
-    template <typename T>
-    void operator<<(const T& data)
+    template <typename T, std::enable_if_t<std::is_arithmetic<T>::value>* = nullptr>
+    bool operator<<(const T& data)
     {
         auto copyData = data;
         swapByteOrder(copyData);
         writeData(copyData);
+        return m_errorState;
     }
 
-    template <typename T>
-    void operator>>(T& data)
+    template <typename T, std::enable_if_t<std::is_arithmetic<T>::value>* = nullptr>
+    bool operator>>(T& data)
     {
         readData(data);
         swapByteOrder(data);
+        return m_errorState;
     }
 
+    //for custom implementations
+    //req:  Custom types must impelement << and >> operators with RHS being DataStream
+    //, LHS being T, and return type being bool
+    //example: bool operator>>(const EntityId& lhs, DataStream& rhs);
+    template <typename T>
+    auto append(const T& data) -> decltype(data >> *this)
+    {
+        return data >> *this;
+    }
+
+    template <typename T>
+    auto read(T& data) -> decltype(data << *this)
+    {
+        return data << *this;
+    }
+
+    template <typename T>
+    auto operator<<(const T& data) -> decltype(data >> *this)
+    {
+        return data >> *this;
+    }
+
+    template <typename T>
+    auto operator>>(T& data) -> decltype(data << *this)
+    {
+        return data << *this;
+    }
+
+    //catch all with error message.
+    //this would be nice if I could find a way to get the static assert to only check if someone actually calls
+//    void append(...)
+//    {
+//        //force evaluatoin and make always false.
+//        static_assert(false, "This type hasn't been impelmented by DataStream yet!");
+//    }
 
     ByteOrder byteOrder() const;
     void setByteOrder(const ByteOrder &byteOrder);
@@ -138,25 +174,9 @@ private:
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
-    template <typename T, std::enable_if_t<std::is_same<int8_t, T>::value || std::is_same<uint8_t, T>::value || std::is_same<bool, T>::value>* = nullptr>
-    void swapByteOrder(T& data) const
+    void swapByteOrder(...) const
     {
         //do nothing
-    }
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
-
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
-    //default for other classes
-    template <typename T, std::enable_if_t<!std::is_arithmetic<T>::value>* = nullptr>
-    void swapByteOrder(T& data) const
-    {
-        //for now
-        static_assert(!std::is_arithmetic<T>::value, "DataStream doesn't handle that type yet!  Try a primative type.");
     }
 #ifdef __GNUC__
 #pragma GCC diagnostic pop

@@ -78,4 +78,25 @@ void EntityId::setEntity(const uint16_t &entity)
     m_entity = entity;
 }
 
+bool operator<<(EntityId& lhs, DataStream& rhs)
+{
+    uint16_t site, app, entity;
+    rhs.read(site);
+    lhs.setSite(site);
+    rhs.read(app);
+    lhs.setApp(app);
+    rhs.read(entity);
+    lhs.setEntity(entity);
+    return rhs.errorState();
+}
+
+bool operator>>(const EntityId& lhs, DataStream& rhs)
+{
+   rhs.append(lhs.site());
+   rhs.append(lhs.app());
+   rhs.append(lhs.entity());
+   return rhs.errorState();
+}
+
+
 }

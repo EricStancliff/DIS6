@@ -41,7 +41,8 @@ HEADERS += \
     entitystatepdu.h \
     entityid.h \
     entitytype.h \
-    utils.h
+    utils.h \
+    dis6_global.h
 
 unix {
     target.path = /usr/lib

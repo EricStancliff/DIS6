@@ -1,12 +1,14 @@
 #pragma once
 
+#include "dis6_global.h"
+
 #include "datastream.h"
 #include "header.h"
 
 namespace DIS6
 {
 
-class Pdu
+class DIS6_EXPORT Pdu
 {
 public:
     Pdu();

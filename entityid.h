@@ -2,10 +2,13 @@
 
 #include <cinttypes>
 
+#include "dis6_global.h"
+#include "datastream.h"
+
 namespace DIS6
 {
 
-class EntityId
+class DIS6_EXPORT EntityId
 {
 public:
     EntityId();
@@ -49,6 +52,7 @@ public:
         return !(*this == rhs);
     }
 
+
     uint16_t site() const;
     void setSite(const uint16_t &site);
 
@@ -64,5 +68,9 @@ protected:
     uint16_t m_app;
     uint16_t m_entity;
 };
+
+
+DIS6_EXPORT bool operator<<(EntityId& lhs, DataStream& rhs);
+DIS6_EXPORT bool operator>>(const EntityId& lhs, DataStream& rhs);
 
 }

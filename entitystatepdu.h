@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dis6_global.h"
+
 #include "pdu.h"
 #include "entityid.h"
 #include "entitytype.h"
@@ -15,7 +17,7 @@ enum ForceId : uint8_t {
     Neutral = 3
 };
 
-class EntityStatePdu : public Pdu
+class DIS6_EXPORT EntityStatePdu : public Pdu
 {
 public:
     EntityStatePdu();

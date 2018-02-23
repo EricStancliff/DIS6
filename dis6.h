@@ -3,11 +3,13 @@
 #include <cstdint>
 #include <shared_mutex>
 
+#include "dis6_global.h"
+
 namespace DIS6
 {
 
 //simple class to represent an IP address
-class IPAddress
+class DIS6_EXPORT IPAddress
 {
 public:
     IPAddress(): octet1(0), octet2(0), octet3(0), octet4(0) {}
