@@ -1,11 +1,9 @@
 #pragma once
 
-#include <sstream>
-#include <climits>
+#include <string>
 #include <vector>
-#include <assert.h>
 #include <type_traits>
-#include <cstdarg>
+#include <assert.h>
 
 #ifdef __GNUC__
 #include <byteswap.h>
