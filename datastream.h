@@ -23,6 +23,12 @@ enum ByteOrder {
     LittleEndian
 };
 
+template <typename...>
+struct ForceIgnoreStaticAssertUntilCalled : std::false_type
+{
+
+};
+
 constexpr ByteOrder systemByteOrder()
 {
     union {
@@ -112,12 +118,17 @@ public:
     }
 
     //catch all with error message.
-    //this would be nice if I could find a way to get the static assert to only check if someone actually calls
-//    void append(...)
-//    {
-//        //force evaluatoin and make always false.
-//        static_assert(false, "This type hasn't been impelmented by DataStream yet!");
-//    }
+    //this is a neat trick. Signatures of "..." are guaranteed to be last priority for overload resolution
+    //we declare that our n args are of type T, and have a struct that requires n template args before it can be
+    //evaluated, but actually it just derives from std::false_type.  This way the static_assert isn't evaluated until
+    //somebody actually calls it with at least one arg.
+    template <typename... T>
+    bool append(...)
+    {
+        //force evaluatoin and make always false.
+        static_assert(ForceIgnoreStaticAssertUntilCalled<T...>::value, "This type hasn't been impelmented by DataStream yet!");
+        return false;
+    }
 
     ByteOrder byteOrder() const;
     void setByteOrder(const ByteOrder &byteOrder);
